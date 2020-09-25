@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<AnchorPane prefHeight="826.0" prefWidth="1176.0" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.Controller">
+   <children>
+      <TextField fx:id="textField1" editable="false" layoutX="46.0" layoutY="28.0" />
+      <Button fx:id="import1" layoutX="46.0" layoutY="64.0" mnemonicParsing="false" onAction="#importFile" text="Importiere Liste 1" />
+      <TextField fx:id="textField2" editable="false" layoutX="235.0" layoutY="28.0" />
+      <Button fx:id="import2" layoutX="235.0" layoutY="64.0" mnemonicParsing="false" onAction="#importFile" text="Importiere Liste 2" />
+      <Label layoutX="242.0" layoutY="101.0" prefHeight="25.0" prefWidth="95.0" text="Erste Ergebnisse:" />
+      <Label layoutX="846.0" layoutY="101.0" prefHeight="25.0" prefWidth="109.0" text="Zweite Ergebnisse:" />
+      <TableView fx:id="tableView2" layoutX="594.0" layoutY="126.0" prefHeight="687.0" prefWidth="532.0">
+         <columns>
+            <TableColumn fx:id="surenameTC2" editable="false" prefWidth="93.0" text="Vorname" />
+            <TableColumn fx:id="nameTC2" editable="false" prefWidth="113.0" text="Nachname" />
+            <TableColumn fx:id="pointsTC2" editable="false" prefWidth="87.0" text="Punkte" />
+            <TableColumn fx:id="newPointsTC2" editable="false" prefWidth="116.0" text="Neue Punkte" />
+            <TableColumn fx:id="differenceTC2" editable="false" prefWidth="94.0" text="Differenz" />
+         </columns>
+      </TableView>
+      <TableView fx:id="tableView1" layoutX="38.0" layoutY="126.0" prefHeight="687.0" prefWidth="504.0">
+         <columns>
+            <TableColumn fx:id="surenameTC1" editable="false" prefWidth="93.0" text="Vorname" />
+            <TableColumn fx:id="nameTC1" editable="false" prefWidth="113.0" text="Nachname" />
+            <TableColumn fx:id="pointsTC1" editable="false" prefWidth="87.0" text="Punkte" />
+         </columns>
+      </TableView>
+      <Label fx:id="errormessage" layoutX="514.0" layoutY="32.0" prefHeight="34.0" prefWidth="373.0" />
+      <Button layoutX="384.0" layoutY="64.0" mnemonicParsing="false" onAction="#reset" text="Lösche Listen" />
+   </children>
+</AnchorPane>
