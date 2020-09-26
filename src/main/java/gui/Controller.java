@@ -16,7 +16,9 @@ import logic.Pupil;
 
 import java.io.File;
 import java.net.URL;
+import java.text.SimpleDateFormat;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.List;
 import java.util.ResourceBundle;
 
@@ -73,6 +75,9 @@ public class Controller implements Initializable {
     private final SortedList<Pupil> sortedList1 = new SortedList<>(pupils1);
     private final SortedList<Pupil> sortedList2 = new SortedList<>(pupils2);
 
+    private final SimpleDateFormat format = new SimpleDateFormat("HH:mm:ss.SSS");
+
+
     @FXML
     public void importFile(ActionEvent event) {
         Stage stage = new Stage();
@@ -82,6 +87,7 @@ public class Controller implements Initializable {
         File file = fileChooser.showOpenDialog(stage);
         String id = ((Button) event.getSource()).getId();
         int x = Integer.parseInt(String.valueOf(id.charAt(id.length() - 1)));
+        logTime("Beginning to import Sheet " + x);
         try {
             List<Pupil> pupils = Importer.getFile(file);
             if (x == 1) {
@@ -97,10 +103,11 @@ public class Controller implements Initializable {
         tableView1.refresh();
         tableView2.refresh();
         errormessage.setText("");
+        logTime("Finished importing Sheet " + x);
     }
 
     @FXML
-    private void reset(){
+    private void reset() {
         textField1.setText("");
         textField2.setText("");
         pupils1.clear();
@@ -110,6 +117,7 @@ public class Controller implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        logTime("Beginning to initialize");
         tableView1.setPlaceholder(new Label("Keine Schüler in Tabelle"));
         tableView2.setPlaceholder(new Label("Keine Schüler in Tabelle"));
 
@@ -143,7 +151,7 @@ public class Controller implements Initializable {
 
         tableView1.sort();
         tableView2.sort();
-
+        logTime("Finished Initialization");
     }
 
     private void doListStuff(List<Pupil> list, List<Pupil> imported, TextField textField, String filename) {
@@ -153,14 +161,22 @@ public class Controller implements Initializable {
     }
 
     private void assignValuesToList2(List<Pupil> newPupils, List<Pupil> oldPupils) {
+        logTime("Beginning to import second list");
         for (Pupil newPupil : newPupils) {
             for (Pupil previousPupil : oldPupils) {
                 if (newPupil.isSamePupil(previousPupil)) {
                     if (newPupil.getDifference() < 0) {
                         errormessage.setText("Möglicherweise Excel Dateien in vertauschter Reihenfolge importiert");
                     }
+                    break;
                 }
             }
         }
+        logTime("Finished importing");
+    }
+
+    private void logTime(String s) {
+        Date date = new Date(System.currentTimeMillis());
+        System.out.println(format.format(date) + "\t" + s);
     }
 }
