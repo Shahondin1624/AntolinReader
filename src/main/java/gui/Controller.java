@@ -2,6 +2,7 @@ package gui;
 
 
 import importing.Importer;
+import importing.PupilCombiner;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.SortedList;
@@ -12,14 +13,16 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import logic.Klasse;
 import logic.Pupil;
+import logic.Util;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.Comparator;
-import java.util.Date;
-import java.util.List;
 import java.util.ResourceBundle;
 
 public class Controller implements Initializable {
@@ -29,12 +32,6 @@ public class Controller implements Initializable {
 
     @FXML
     private TextField textField2;
-
-    @FXML
-    private Button import1;
-
-    @FXML
-    private Button import2;
 
     @FXML
     private TableView<Pupil> tableView1;
@@ -69,6 +66,11 @@ public class Controller implements Initializable {
     @FXML
     private Label errormessage;
 
+    private final Logger logger = LoggerFactory.getLogger(Controller.class);
+
+    private Klasse klasse1 = null;
+    private Klasse klasse2 = null;
+
     private final ObservableList<Pupil> pupils1 = FXCollections.observableArrayList();
     private final ObservableList<Pupil> pupils2 = FXCollections.observableArrayList();
 
@@ -77,47 +79,8 @@ public class Controller implements Initializable {
 
     private final SimpleDateFormat format = new SimpleDateFormat("HH:mm:ss.SSS");
 
-
-    @FXML
-    public void importFile(ActionEvent event) {
-        Stage stage = new Stage();
-        stage.setTitle("Excel Mappe zum Importieren auswählen");
-        FileChooser fileChooser = new FileChooser();
-        fileChooser.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("Excel-Files", "*xls", "*xlsx"));
-        File file = fileChooser.showOpenDialog(stage);
-        String id = ((Button) event.getSource()).getId();
-        int x = Integer.parseInt(String.valueOf(id.charAt(id.length() - 1)));
-        logTime("Beginning to import Sheet " + x);
-        try {
-            List<Pupil> pupils = Importer.getFile(file);
-            if (x == 1) {
-                doListStuff(pupils1, pupils, textField1, file.getName());
-            } else if (x == 2 && !pupils1.isEmpty()) {
-                doListStuff(pupils2, pupils, textField2, file.getName());
-                assignValuesToList2(pupils, pupils1);
-            } else {
-                doListStuff(pupils1, pupils, textField1, file.getName());
-            }
-        } catch (NullPointerException ignored) {
-        }
-        tableView1.refresh();
-        tableView2.refresh();
-        errormessage.setText("");
-        logTime("Finished importing Sheet " + x);
-    }
-
-    @FXML
-    private void reset() {
-        textField1.setText("");
-        textField2.setText("");
-        pupils1.clear();
-        pupils2.clear();
-        errormessage.setText("");
-    }
-
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        logTime("Beginning to initialize");
         tableView1.setPlaceholder(new Label("Keine Schüler in Tabelle"));
         tableView2.setPlaceholder(new Label("Keine Schüler in Tabelle"));
 
@@ -151,32 +114,77 @@ public class Controller implements Initializable {
 
         tableView1.sort();
         tableView2.sort();
-        logTime("Finished Initialization");
     }
 
-    private void doListStuff(List<Pupil> list, List<Pupil> imported, TextField textField, String filename) {
-        list.clear();
-        list.addAll(imported);
-        textField.setText(filename);
-    }
-
-    private void assignValuesToList2(List<Pupil> newPupils, List<Pupil> oldPupils) {
-        logTime("Beginning to import second list");
-        for (Pupil newPupil : newPupils) {
-            for (Pupil previousPupil : oldPupils) {
-                if (newPupil.isSamePupil(previousPupil)) {
-                    if (newPupil.getDifference() < 0) {
-                        errormessage.setText("Möglicherweise Excel Dateien in vertauschter Reihenfolge importiert");
-                    }
-                    break;
-                }
+    /***
+     * Imports the selected file and attempts to create a Klasse-object from it
+     * @param event to get button-id
+     */
+    @FXML
+    public void importFile(ActionEvent event) {
+        Stage stage = new Stage();
+        stage.setTitle("Excel Mappe zum Importieren auswählen");
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("Excel-Files", "*xls", "*xlsx"));
+        File file = fileChooser.showOpenDialog(stage);
+        String id = ((Button) event.getSource()).getId();
+        int x = Integer.parseInt(String.valueOf(id.charAt(id.length() - 1)));
+        try {
+            logger.info("Beginning to import Sheet {}", file.getName());
+            Klasse klasse = Importer.getFile(file);
+            klasse.setFileName(file.getName());
+            if (x == 1) {
+                klasse1 = klasse;
+            } else if (x == 2 && klasse1 != null) {
+                klasse2 = klasse;
+            } else {
+                klasse1 = klasse;
             }
+        } catch (NullPointerException e) {
+            errormessage.setText(e.getMessage());
+        } catch (IllegalArgumentException iae){
+            logger.warn(iae.getMessage());
+            errormessage.setText(iae.getMessage());
         }
-        logTime("Finished importing");
+        assignValuesToUI();
     }
 
-    private void logTime(String s) {
-        Date date = new Date(System.currentTimeMillis());
-        System.out.println(format.format(date) + "\t" + s);
+    /***
+     * Switches klasse's if they have been imported in the wrong order and displays them
+     */
+    private void assignValuesToUI() {
+        Klasse older = Util.older(klasse1, klasse2);
+        Klasse newer = Util.newer(klasse1, klasse2);
+        klasse1 = older;
+        klasse2 = newer;
+        if (klasse1 != null){
+            textField1.setText(klasse1.getFileName());
+            pupils1.clear();
+            pupils1.addAll(klasse1.getPupils());
+        }
+        if (klasse2 != null) {
+            textField2.setText(klasse2.getFileName());
+            klasse2 = PupilCombiner.merge(klasse1, klasse2);
+            pupils2.clear();
+            pupils2.addAll(klasse2.getPupils());
+        }
+        tableView1.refresh();
+        tableView2.refresh();
     }
+
+    /***
+     * completely resets UI
+     */
+    @FXML
+    private void reset() {
+        textField1.setText("");
+        textField2.setText("");
+        pupils1.clear();
+        pupils2.clear();
+        errormessage.setText("");
+        klasse1 = null;
+        klasse2 = null;
+    }
+
+
 }

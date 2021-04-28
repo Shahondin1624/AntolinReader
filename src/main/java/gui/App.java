@@ -1,5 +1,6 @@
 package gui;
 
+
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
@@ -10,7 +11,7 @@ public class App extends Application {
     @Override
     public void start(Stage primaryStage) throws Exception {
         primaryStage.setTitle("Antolin Statistik");
-        primaryStage.setResizable(false);
+        primaryStage.setResizable(true);
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/View.fxml"));
         AnchorPane pane = loader.load();
         primaryStage.setScene(new Scene(pane));

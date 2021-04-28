@@ -1,6 +1,3 @@
-package assembly;
-
-
 import gui.App;
 
 public class Main {

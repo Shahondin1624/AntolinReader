@@ -1,90 +1,134 @@
 package importing;
 
+import logic.Klasse;
 import logic.Pupil;
-import org.apache.poi.hssf.usermodel.HSSFSheet;
-import org.apache.poi.hssf.usermodel.HSSFWorkbook;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.xssf.usermodel.XSSFSheet;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.ss.usermodel.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class Importer {
 
-    private static List<Pupil> getFileDataXLS(File file) {
-        ArrayList<Pupil> pupils = new ArrayList<>();
-        try (FileInputStream fileInputStream = new FileInputStream(file);) {
-            HSSFWorkbook workbook = new HSSFWorkbook(fileInputStream);
-            HSSFSheet sheet = workbook.getSheetAt(0);
-            int counter = 0;
-            while (true) {
-                Row row = sheet.getRow(counter);
-                if (row != null && "Vorname".equals(row.getCell(0).getStringCellValue())) {
-                    counter++;
-                    break;
-                } else counter++;
-            }
-            while (true) {
-                Row row = sheet.getRow(counter);
-                if (row == null || "".equals(row.getCell(0).getStringCellValue())) {
-                    break;
-                }
-                String forename = row.getCell(0).getStringCellValue();
-                String name = row.getCell(1).getStringCellValue();
-                int points = (int) row.getCell(3).getNumericCellValue();
-                Pupil pupil = new Pupil(forename, name);
-                pupil.setPoints(points);
-                pupils.add(pupil);
-                counter++;
-            }
+    private static final Logger LOGGER = LoggerFactory.getLogger(Importer.class);
 
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (IllegalStateException se){
-
-        }
-        return pupils;
-    }
-
-    private static List<Pupil> getFileDataXLSX(File file) {
-        ArrayList<Pupil> pupils = new ArrayList<>();
-        try (FileInputStream fileInputStream = new FileInputStream(file);) {
-            XSSFWorkbook workbook = new XSSFWorkbook(fileInputStream);
-            XSSFSheet sheet = workbook.getSheetAt(0);
-            int counter = 3;
+    private static Klasse extract(File file) {
+        Klasse klasse = new Klasse();
+        try {
+            LOGGER.info("Beginning importing");
+            Workbook wb = WorkbookFactory.create(file);
+            Sheet sheet = wb.getSheetAt(0);
+            PositionHandler position = readPositionValues(sheet);
+            int rowPos = position.getBeginIndex();
             while (true) {
-                Row row = sheet.getRow(counter);
-                if ("".equals(row.getCell(0).getStringCellValue())) {
+                try {
+                    Row row = sheet.getRow(rowPos);
+                    if (!"".equalsIgnoreCase(row.getCell(position.getForeNameColumnPos()).getStringCellValue())) {
+                        String foreName = getValue(row, position.getForeNameColumnPos());
+                        String name = getValue(row, position.getNameColumnPos());
+                        double numberOfBooks = getValue(row, position.getNumberOfBooksPos());
+                        double points = getValue(row, position.getPointsPos());
+                        double percentage = getValue(row, position.getPercentagePos());
+                        String username = getValue(row, position.getUserNamePos());
+                        Pupil pupil = new Pupil(foreName, name);
+                        pupil.setBooks((int) numberOfBooks);
+                        pupil.setPoints((int) points);
+                        pupil.setPercentage(String.valueOf(percentage));
+                        pupil.setUserName(username);
+                        klasse.addPupil(pupil);
+                        LOGGER.info("Added pupil {} {} to current class", foreName, name);
+                        rowPos++;
+                    } else {
+                        LOGGER.info("Finished importing");
+                        break;
+                    }
+                } catch (NullPointerException npe){
                     break;
                 }
-                String forename = row.getCell(0).getStringCellValue();
-                String name = row.getCell(1).getStringCellValue();
-                int points = (int) row.getCell(3).getNumericCellValue();
-                Pupil pupil = new Pupil(forename, name);
-                pupil.setPoints(points);
-                pupils.add(pupil);
-                counter++;
             }
-
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return pupils;
+        return klasse;
     }
 
-    public static List<Pupil> getFile(File file) {
+    /***
+     * Method to determine in which columns which values are to be found for easier access in the main import method
+     * @param sheet
+     * @return
+     */
+    private static PositionHandler readPositionValues(Sheet sheet) {
+        PositionHandler handler = new PositionHandler();
+        int foreNameColumnPos = 0;
+        int nameColumnPos = 0;
+        int numberOfBooksPos = 0;
+        int pointsPos = 0;
+        int percentagePos = 0;
+        int userNamePos = 0;
+        Iterator<Row> rows = sheet.rowIterator();
+        while (rows.hasNext()) {
+            Row row = rows.next();
+            Iterator<Cell> cells = row.cellIterator();
+            while (cells.hasNext()) {
+                Cell cell = cells.next();
+                if (cell.getCellType() == CellType.STRING) {
+                    String cellValue = cell.getStringCellValue();
+                    int cellColumn = cell.getColumnIndex();
+                    if ("Vorname".equalsIgnoreCase(cellValue)) {
+                        foreNameColumnPos = cellColumn;
+                        handler.setForeNameColumnPos(foreNameColumnPos);
+                    }
+                    if ("Nachname".equalsIgnoreCase(cellValue)) {
+                        nameColumnPos = cellColumn;
+                        handler.setNameColumnPos(nameColumnPos);
+                    }
+                    if ("Anzahl Bücher".equalsIgnoreCase(cellValue)) {
+                        numberOfBooksPos = cellColumn;
+                        handler.setNumberOfBooksPos(numberOfBooksPos);
+                    }
+                    if ("Punkte".equalsIgnoreCase(cellValue)) {
+                        pointsPos = cellColumn;
+                        handler.setPointsPos(pointsPos);
+                    }
+                    if ("Leistung".equalsIgnoreCase(cellValue)) {
+                        percentagePos = cellColumn;
+                        handler.setPercentagePos(percentagePos);
+                    }
+                    if ("Benutzername".equalsIgnoreCase(cellValue)) {
+                        userNamePos = cellColumn;
+                        handler.setUserNamePos(userNamePos);
+                        handler.setBeginIndex(cell.getRowIndex() + 1);
+                        return handler;
+                    }
+                }
+            }
+        }
+        return handler;
+    }
+
+    public static Klasse getFile(File file) {
         if (file != null) {
-            if (file.getPath().matches(".+\\.xls")) {
-                return getFileDataXLS(file);
-            } else if (file.getPath().matches(".+\\.xlsx")) {
-                return getFileDataXLSX(file);
+            if (file.getPath().matches(".+\\.xls") || file.getPath().matches(".+\\.xlsx")) {
+                Klasse res = extract(file);
+                if (res.getPupils().isEmpty()){
+                    throw new IllegalArgumentException("Was not able to construct the necessary data from this file");
+                } else {
+                    return res;
+                }
             }
         }
-        return new ArrayList<>();
+        throw new IllegalArgumentException("Was not able to construct the necessary data from this file");
+    }
+
+    private static <R> R getValue(Row row, int pos) {
+        Cell cell = row.getCell(pos);
+        if (cell.getCellType() == CellType.STRING) {
+            return (R) cell.getStringCellValue();
+        } else {
+            return (R) (Double) cell.getNumericCellValue();
+        }
     }
 
 
